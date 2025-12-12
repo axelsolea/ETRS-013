@@ -53,6 +53,20 @@ def componentsCompute():
         forwardStartResult = client.service.forward(start)
         forwardEndResult = client.service.forward(end)
 
+        GeoJSONStr = client.service.compute_travel(
+            forwardStartResult[2],
+            forwardStartResult[1],
+            forwardEndResult[2],
+            forwardEndResult[1]
+        )
+        GeoJSON = json.loads(GeoJSONStr)
+        # Tracé du chemin
+        listePtsChemin = []
+        for lat, lng in GeoJSON["features"][0]["geometry"]["coordinates"]:
+            listePtsChemin.append((lng, lat))
+        print(listePtsChemin)
+        folium.PolyLine(listePtsChemin, tooltip="Itinéraire").add_to(m)
+
         #Marqueur origine
         folium.Marker(
             location=[forwardStartResult[1],forwardStartResult[2]],

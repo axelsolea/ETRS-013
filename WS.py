@@ -43,9 +43,17 @@ class forwardGeocoding(ServiceBase):
         formattedResponse = [str(response["results"][0]["formatted"]),str(response["results"][0]["geometry"]["lat"]), str(response["results"][0]["geometry"]["lng"])]
         return formattedResponse
 
+class computeTravel(ServiceBase):
+    @rpc(Float, Float, Float, Float, _returns=Unicode)
+    def compute_travel(ctx, startPosLat, startPosLng, endPosLat, endPosLng):
+        requestUrl = f"https://api.openrouteservice.org/v2/directions/driving-car?api_key={OpenRteSce_API_KEY}&start={startPosLat},{startPosLng}&end={endPosLat},{endPosLng}"
+        payload = {};headers = {}
+        print("[DEBUG] Req  url = %s" % requestUrl)
+        response = requests.request("GET", requestUrl, headers=headers, data=payload)
+        return response.text
 
 application = Application(
-    [ComputeTravelTime, NearChargingStations, forwardGeocoding],            # Liste des services exposés
+    [ComputeTravelTime, NearChargingStations, forwardGeocoding, computeTravel],            # Liste des services exposés
     'localhost/travel',                 # Namespace du service
     in_protocol=Soap11(validator='lxml'),   # Protocole SOAP en entrée
     out_protocol=Soap11())                   # Protocole SOAP en sortie
