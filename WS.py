@@ -8,6 +8,64 @@ import requests
 
 OpenRteSce_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBhYTQ4MWRiYzJjMzQ5NWRiYzhhZTEyOGM4ZDZhNGM5IiwiaCI6Im11cm11cjY0In0="
 OpenCage_API_KEY = "91f9a68a0eb04dd492e16b64e74faca0"
+GRAPHQL_QUERY = """
+query vehicleList {
+  vehicleList(size: 10, page: 0) {
+    id
+    naming {
+      make
+      model
+      version
+    }
+    connectors {
+      standard
+      power
+      time
+      charge_speed
+    }
+    adapters {
+      standard
+      power
+      time
+      charge_speed
+    }
+    battery {
+      usable_kwh
+    }
+    range {
+      chargetrip_range {
+        best
+        worst
+      }
+    }
+    media {
+      image {
+        id
+        type
+        url
+        height
+        width
+        thumbnail_url
+        thumbnail_height
+        thumbnail_width
+      }
+      make {
+        id
+        type
+        url
+        height
+        width
+        thumbnail_url
+        thumbnail_height
+        thumbnail_width
+      }
+    }
+    routing {
+      fast_charging_support
+    }
+  }
+}
+        """
 
 class ComputeTravelTime(ServiceBase):
     @rpc(float, float, float, _returns=float)      #Déclaration de fonction SOAP
@@ -52,8 +110,20 @@ class computeTravel(ServiceBase):
         response = requests.request("GET", requestUrl, headers=headers, data=payload)
         return response.text
 
+class getVehiculeList(ServiceBase):
+    @rpc(_returns=Unicode)
+    def get_vehicule_list(ctx):
+        requestUrl = "https://api.chargetrip.io/graphql"
+
+        payload = {"query": GRAPHQL_QUERY}
+        headers = {
+            'x-client-id': '693c2f3371c4b62cdd1c5054',
+            'x-app-id': '693c2f3371c4b62cdd1c5056',}
+        response = requests.request("POST", requestUrl, headers=headers, data=payload)
+        return response.text
+
 application = Application(
-    [ComputeTravelTime, NearChargingStations, forwardGeocoding, computeTravel],            # Liste des services exposés
+    [ComputeTravelTime, NearChargingStations, forwardGeocoding, computeTravel, getVehiculeList],            # Liste des services exposés
     'localhost/travel',                 # Namespace du service
     in_protocol=Soap11(validator='lxml'),   # Protocole SOAP en entrée
     out_protocol=Soap11())                   # Protocole SOAP en sortie

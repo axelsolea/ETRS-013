@@ -8,6 +8,11 @@ app = Flask(__name__)
 wsdl = 'http://127.0.0.1:8000/?wsdl'
 client = zeep.Client(wsdl=wsdl)
 
+@app.route("/vehicules", methods=['GET','POST'])
+def vehicules():
+    result = client.service.get_vehicule_list()
+    print(result)
+
 @app.route("/compute", methods=['GET','POST']) #Render de l'index avec calcul
 def compute():
     try:
@@ -34,8 +39,21 @@ def components():
     header = m.get_root().header.render()
     body_html = m.get_root().html.render()
     script = m.get_root().script.render()
+    vehicule_json_str = client.service.get_vehicule_list()
+    vehicule_data = json.loads(vehicule_json_str)
 
-    return render_template("index.html", header=header, body_html=body_html, script=script)
+    vehicule_list_raw = vehicule_data.get("data", {}).get("vehicleList", [])
+
+    vehicule_options = []
+    for v in vehicule_list_raw:
+        naming = v.get("naming", {})
+        name = f"{naming.get('make', 'N/A')} {naming.get('model', 'N/A')}"
+        # Stocker l'ID comme valeur (ce qui sera envoyé par le formulaire)
+        vehicule_options.append({
+            'id': v.get('id', ''),
+            'name': name
+        })
+    return render_template("index.html", header=header, body_html=body_html, folium_script=script, vehicules=vehicule_options)
 
 @app.route("/computeTravel", methods=['GET','POST'])
 def componentsCompute():
@@ -93,8 +111,8 @@ def componentsCompute():
         header = m.get_root().header.render()
         body_html = m.get_root().html.render()
         script = m.get_root().script.render()
-
-        return render_template("index.html", header=header, body_html=body_html, script=script)
+        print(script)
+        return render_template("index.html", header=header, body_html=body_html, folium_script=script)
 
     except Exception as e: #Affichage de l'erreur en cas d'erreur
         return render_template("index.html", erreur=str(e))
