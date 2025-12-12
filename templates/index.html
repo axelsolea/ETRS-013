@@ -1,10 +1,95 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Calculateur d'Itinéraire Électrique</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    {{ header|safe }}
+
+    <style>
+        /* Définit la hauteur de la carte à l'intérieur du conteneur */
+        .map-container {
+            height: 600px;
+            margin-top: 20px;
+            border-radius: 8px; /* Bords arrondis */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Ombre légère */
+        }
+        /* Assure que la div Folium prend toute la hauteur du conteneur */
+        #map {
+            height: 100%;
+            border-radius: 8px;
+        }
+    </style>
 </head>
 <body>
+
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">⚡ Itinéraire Véhicule Électrique</span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">📍 Planifier votre Voyage</h5>
+                    </div>
+                    <form class="card-body" action="computeTravel" method="POST">
+
+                       <div class="mb-3">
+                            <label for="start" class="form-label">Départ (Adresse)</label>
+                            <input type="text" class="form-control" id="start" name="start" placeholder="Ex: Tour Eiffel, Paris">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="end" class="form-label">Destination (Adresse)</label>
+                            <input type="text" class="form-control" id="end" name="end" placeholder="Ex: Lyon, France">
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100 mt-2">
+                            🚀 Calculer l'itinéraire
+                        </button>
+
+                        {% if resultat %}
+                            <div class="alert alert-success mt-4">
+                            Résultat : {{ resultat }}
+                            </div>
+                        {% endif %}
+                        {% if erreur %}
+                        <div class="alert alert-danger mt-4">
+                        Erreur : {{ erreur }}
+                        </div>
+                        {% endif %}
+                    </form>
+
+                    <div class="card-footer">
+                        <div id="route-info" class="fw-bold text-center text-primary">
+                            Entrez un départ et une destination.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="map-container">
+                    {{ body_html|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        {{ script|safe }}
+    </script>
+
+    <script src="static/app.js"></script>
 
 </body>
 </html>
