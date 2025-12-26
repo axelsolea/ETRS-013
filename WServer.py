@@ -8,11 +8,14 @@ app = Flask(__name__)
 
 # APIZeep définition du Sce Web
 # Si la variable existe (sur Azure), on l'utilise, sinon on prend localhost (sur votre PC)
-wsdl_url = os.environ.get('SOAP_URL', 'http://127.0.0.1:8000')
-wsdl = f'{wsdl_url}/?wsdl'
-client = zeep.Client(wsdl=wsdl)
+
+#wsdl_url = os.environ.get('SOAP_URL', 'http://127.0.0.1:8000')
+#wsdl = f'{wsdl_url}/?wsdl'
+
 #wsdl = 'http://127.0.0.1:8000/?wsdl'
-#client = zeep.Client(wsdl=wsdl)
+
+wsdl = 'https://soap-engine-bth0b0d3hpfqd7e7.francecentral-01.azurewebsites.net/?wsdl'
+client = zeep.Client(wsdl=wsdl)
 
 
 def haversine_distance(lat1, lon1, lat2, lon2):
