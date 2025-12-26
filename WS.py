@@ -76,17 +76,49 @@ class ComputeTravelTime(ServiceBase):
         return temps_trajet
 
 class NearChargingStations(ServiceBase):
-    @rpc(Float, Float, Integer, _returns=Iterable(str))
+    @rpc(Float, Float, String, _returns=Unicode)
     def near_charging(ctx, long, lat, radius):
-        url = "https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/bornes-irve/records?limit=5&where=within_distance(geo_point_borne,geom'POINT({long} {lat})', {radius})"
+        # Conversion initiale
         long = float(long)
         lat = float(lat)
-        radius = int(radius)
-        requestUrl = url.format(long=long, lat=lat, radius=radius)
-        payload = {};headers = {}
-        print("[DEBUG] Req  url = %s" % requestUrl)
-        response = requests.request("GET", requestUrl, headers=headers, data=payload)
-        return response.text
+        try:
+            radius = int(radius)
+        except:
+            radius = 10  # Valeur par défaut si erreur de conversion
+
+        url = "https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/bornes-irve/records?limit=1&where=within_distance(geo_point_borne,geom'POINT({long} {lat})', {radius}km)&order_by=puiss_max DESC"
+
+        # Initialisation des variables de contrôle
+        current_count = 0
+        protection = 0
+        final_text_response = "{}"  # Pour stocker le résultat final
+
+        while current_count == 0 and protection < 10:
+            requestUrl = url.format(long=long, lat=lat, radius=radius)
+            payload = {};
+            headers = {}
+
+            print("[DEBUG] Req url = %s" % requestUrl)
+
+            # 1. On stocke l'objet réponse dans une variable distincte 'r'
+            r = requests.request("GET", requestUrl, headers=headers, data=payload)
+
+            # 2. On sauvegarde le texte pour le retour de la fonction
+            final_text_response = r.text
+
+            # 3. On convertit en JSON pour vérifier la condition de sortie
+            try:
+                data = r.json()
+                current_count = data.get("total_count", 0)
+            except:
+                current_count = 0  # Si le JSON est invalide, on continue
+
+            if current_count == 0:
+                print("[DEBUG] No station found, expanding radius...")
+                radius += 5
+                protection += 1
+
+        return final_text_response
 
 class forwardGeocoding(ServiceBase):
     @rpc(String, _returns=Iterable(Unicode))
@@ -110,11 +142,20 @@ class computeTravel(ServiceBase):
         response = requests.request("GET", requestUrl, headers=headers, data=payload)
         return response.text
 
+class computeTravelProfiled(ServiceBase):
+    @rpc(Unicode, _returns=Unicode)
+    def compute_travel_profiled(ctx, coordJson):
+        coords = json.loads(coordJson)
+        requestUrl = f"https://api.openrouteservice.org/v2/directions/driving-car/geojson?api_key={OpenRteSce_API_KEY}"
+        payload = {"coordinates":coords};headers = {"Content-Type": "application/json"}
+        print("[DEBUG] Req  url = %s" % requestUrl)
+        response = requests.request("POST", requestUrl, headers=headers, json=payload)
+        return response.text
+
 class getVehiculeList(ServiceBase):
     @rpc(_returns=Unicode)
     def get_vehicule_list(ctx):
         requestUrl = "https://api.chargetrip.io/graphql"
-
         payload = {"query": GRAPHQL_QUERY}
         headers = {
             'x-client-id': '693c2f3371c4b62cdd1c5054',
@@ -123,7 +164,7 @@ class getVehiculeList(ServiceBase):
         return response.text
 
 application = Application(
-    [ComputeTravelTime, NearChargingStations, forwardGeocoding, computeTravel, getVehiculeList],            # Liste des services exposés
+    [ComputeTravelTime, NearChargingStations, forwardGeocoding, computeTravel, getVehiculeList, computeTravelProfiled],            # Liste des services exposés
     'localhost/travel',                 # Namespace du service
     in_protocol=Soap11(validator='lxml'),   # Protocole SOAP en entrée
     out_protocol=Soap11())                   # Protocole SOAP en sortie
