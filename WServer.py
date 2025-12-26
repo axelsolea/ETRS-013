@@ -16,7 +16,16 @@ client = zeep.Client(wsdl=wsdl)
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
-    Calcule la distance entre deux points GPS en km en utilisant la formule de Haversine
+    Calcule la distance géodésique entre deux points GPS.
+
+    Args:
+        lat1 (float): Latitude du point 1.
+        lon1 (float): Longitude du point 1.
+        lat2 (float): Latitude du point 2.
+        lon2 (float): Longitude du point 2.
+
+    Returns:
+        float: Distance en kilomètres.
     """
     R = 6371  # Rayon de la Terre en km
 
@@ -36,31 +45,28 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 @app.route("/vehicules", methods=['GET', 'POST'])
 def vehicules():
     """
-    Debug route to get the list of available vehicules
+    Route utilitaire retournant la liste brute des véhicules.
+
+    Args:
+        None (Utilise implicitement request).
+
+    Returns:
+        str: JSON brut de la liste des véhicules.
     """
     result = client.service.get_vehicule_list()
     return result
 
-
-@app.route("/compute", methods=['GET', 'POST'])  # Render de l'index avec calcul
-def compute():
-    try:
-        distance = request.form['distance']
-        evRange = request.form['evRange']
-        chargeTime = request.form['chargeTime']
-        print("[DEBUG] Variables récupérées : distance=" + str(distance) + ", evRange=" + str(
-            evRange) + ", chargeTime=" + str(chargeTime))
-        result = client.service.compute(distance, evRange, chargeTime)  # Requêtage du Sce Web avec APIZeep
-        print("[DEBUG] Résultat: " + str(result))
-        return render_template("travelTimeForm.html", resultat=result)
-
-    except Exception as e:  # Affichage de l'erreur en cas d'erreur
-        return render_template("travelTimeForm.html", erreur=str(e))
-
-
 @app.route("/")
 def components():
-    """Extract map components and put those on a page."""
+    """
+    Génère la page d'accueil avec la carte et le sélecteur de véhicule.
+
+    Args:
+        None.
+
+    Returns:
+        Template HTML: 'index.html' avec la carte Folium et la liste des options véhicules.
+    """
     m = folium.Map(
         width=800,
         height=600,
@@ -90,6 +96,15 @@ def components():
 
 @app.route("/computeTravel", methods=['GET', 'POST'])
 def componentsCompute():
+    """
+        Orchestre le calcul complet : itinéraire, recherche de bornes et affichage.
+
+        Args:
+            None (Récupère 'start', 'end', 'vehicule' via request.form).
+
+        Returns:
+            Template HTML: 'results.html' avec la carte, le tracé et les statistiques.
+        """
     try:
         # ---                     Key variables                          ---#
         m = folium.Map(
@@ -389,6 +404,15 @@ def componentsCompute():
 
 @app.route("/api/calculate_trip", methods=['POST'])
 def api_calculate_trip():
+    """
+        API JSON fournissant l'itinéraire et les bornes pour applications tierces.
+
+        Args:
+            None (Récupère 'start', 'end', 'vehiculeId' via JSON ou Form).
+
+        Returns:
+            Response (JSON): Objet contenant 'trajet', 'bornes_recharge' et 'vehicule'.
+        """
     try:
         # --- 1. Récupération des paramètres ---
         data = request.get_json(force=True, silent=True)

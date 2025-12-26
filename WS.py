@@ -67,17 +67,20 @@ query vehicleList {
 }
         """
 
-class ComputeTravelTime(ServiceBase):
-    @rpc(float, float, float, _returns=float)      #Déclaration de fonction SOAP
-    def compute(ctx, distance, evRange, chargeTime):
-        arrets = max(math.ceil(distance / evRange) - 1, 0)
-        vitesse_moy = 80
-        temps_trajet = (distance / vitesse_moy) + arrets * chargeTime
-        return temps_trajet
-
 class NearChargingStations(ServiceBase):
     @rpc(Float, Float, String, _returns=Unicode)
     def near_charging(ctx, long, lat, radius):
+        """
+            Recherche la borne de recharge la plus proche autour de coordonnées données.
+
+            Args:
+                long (float): Longitude du point de recherche.
+                lat (float): Latitude du point de recherche.
+                radius (str): Rayon de recherche (ex: "10" ou "10km").
+
+            Returns:
+                str: Chaîne JSON contenant les détails de la borne trouvée (API OpenDataSoft).
+            """
         # Conversion initiale
         long = float(long)
         lat = float(lat)
@@ -123,6 +126,15 @@ class NearChargingStations(ServiceBase):
 class forwardGeocoding(ServiceBase):
     @rpc(String, _returns=Iterable(Unicode))
     def forward(ctx, name):
+        """
+            Convertit une adresse textuelle en coordonnées GPS (Géocodage).
+
+            Args:
+                name (str): Adresse ou nom de ville à géocoder.
+
+            Returns:
+                list[str]: Liste contenant [Adresse formatée, Latitude, Longitude].
+            """
         url="https://api.opencagedata.com/geocode/v1/json?key={key}&q={name}&limit=3&pretty=1"
         payload={};headers = {}
         requestUrl = url.format(key=OpenCage_API_KEY, name=name)
@@ -136,6 +148,18 @@ class forwardGeocoding(ServiceBase):
 class computeTravel(ServiceBase):
     @rpc(Float, Float, Float, Float, _returns=Unicode)
     def compute_travel(ctx, startPosLat, startPosLng, endPosLat, endPosLng):
+        """
+            Récupère la géométrie d'un trajet simple entre deux points.
+
+            Args:
+                startPosLat (float): Latitude de départ.
+                startPosLng (float): Longitude de départ.
+                endPosLat (float): Latitude d'arrivée.
+                endPosLng (float): Longitude d'arrivée.
+
+            Returns:
+                str: Chaîne GeoJSON brute de l'itinéraire (API OpenRouteService).
+            """
         requestUrl = f"https://api.openrouteservice.org/v2/directions/driving-car?api_key={OpenRteSce_API_KEY}&start={startPosLat},{startPosLng}&end={endPosLat},{endPosLng}"
         payload = {};headers = {}
         print("[DEBUG] Req  url = %s" % requestUrl)
@@ -145,6 +169,15 @@ class computeTravel(ServiceBase):
 class computeTravelProfiled(ServiceBase):
     @rpc(Unicode, _returns=Unicode)
     def compute_travel_profiled(ctx, coordJson):
+        """
+            Calcule un itinéraire précis passant par une liste ordonnée de points (bornes).
+
+            Args:
+                coordJson (str): Chaîne JSON représentant une liste de coordonnées [[lon, lat], ...].
+
+            Returns:
+                str: Chaîne GeoJSON brute de l'itinéraire complet (API OpenRouteService).
+            """
         coords = json.loads(coordJson)
         requestUrl = f"https://api.openrouteservice.org/v2/directions/driving-car/geojson?api_key={OpenRteSce_API_KEY}"
         payload = {"coordinates":coords};headers = {"Content-Type": "application/json"}
@@ -155,6 +188,15 @@ class computeTravelProfiled(ServiceBase):
 class getVehiculeList(ServiceBase):
     @rpc(_returns=Unicode)
     def get_vehicule_list(ctx):
+        """
+            Récupère la liste des véhicules électriques et leurs détails techniques.
+
+            Args:
+                None: Pas d'arguments d'entrée.
+
+            Returns:
+                str: Chaîne JSON contenant la liste des véhicules (API GraphQL Chargetrip).
+            """
         requestUrl = "https://api.chargetrip.io/graphql"
         payload = {"query": GRAPHQL_QUERY}
         headers = {
@@ -164,7 +206,7 @@ class getVehiculeList(ServiceBase):
         return response.text
 
 application = Application(
-    [ComputeTravelTime, NearChargingStations, forwardGeocoding, computeTravel, getVehiculeList, computeTravelProfiled],            # Liste des services exposés
+    [NearChargingStations, forwardGeocoding, computeTravel, getVehiculeList, computeTravelProfiled],
     'localhost/travel',                 # Namespace du service
     in_protocol=Soap11(validator='lxml'),   # Protocole SOAP en entrée
     out_protocol=Soap11())                   # Protocole SOAP en sortie
