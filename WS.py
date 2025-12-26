@@ -127,7 +127,7 @@ class forwardGeocoding(ServiceBase):
     @rpc(String, _returns=Iterable(Unicode))
     def forward(ctx, name):
         """
-            Convertit une adresse textuelle en coordonnées GPS (Géocodage).
+            Convertit une adresse textuelle en coordonnées INFOS.md (Géocodage).
 
             Args:
                 name (str): Adresse ou nom de ville à géocoder.

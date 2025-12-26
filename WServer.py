@@ -16,7 +16,7 @@ client = zeep.Client(wsdl=wsdl)
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
-    Calcule la distance géodésique entre deux points GPS.
+    Calcule la distance géodésique entre deux points INFOS.md.
 
     Args:
         lat1 (float): Latitude du point 1.
@@ -161,7 +161,6 @@ def componentsCompute():
 
         # ---                     Calcul primaire du chemin                          ---#
         listePtsChemin = []
-        # Attention : GeoJSON est en [Lon, Lat], votre code inverse pour avoir [Lat, Lon] dans listePtsChemin
         for lon, lat in GeoJSON["features"][0]["geometry"]["coordinates"]:
             listePtsChemin.append([lat, lon])
 
@@ -171,8 +170,6 @@ def componentsCompute():
         distance_parcourue = 0
         coordonneesBornes.append([float(forwardStartResult[2]), float(forwardStartResult[1])])
         print("[DEBUG] Begin computing logic based on geometry points...")
-
-        # On itère point par point sur la ligne tracée (Geometry) au lieu des steps
         for i in range(len(listePtsChemin) - 1):
             # Point actuel (A) et point suivant (B)
             p1_lat, p1_lon = listePtsChemin[i]
@@ -188,7 +185,7 @@ def componentsCompute():
                 try:
                     # Recherche de borne autour du point actuel (P1)
                     res_json = client.service.near_charging(
-                        p1_lon,  # Attention l'API attend souvent Longitude, Latitude
+                        p1_lon,
                         p1_lat,
                         "10"
                     )
@@ -238,11 +235,6 @@ def componentsCompute():
             # Soustraction de la distance parcourue sur ce segment
             autonomieRestante -= dist_segment
             distance_parcourue += dist_segment
-
-            # Optionnel : Arrêter de chercher si on est très proche de la fin pour éviter une charge à 2km de l'arrivée
-            # if distance_parcourue > (total_distance_estimee - 10): break
-
-
 
         # ---                     Calcul secondaire du chemin                          ---#
         print("[DEBUG] Recomputing path...")
@@ -369,7 +361,7 @@ def componentsCompute():
     ----------------
     Retourne un objet JSON structuré contenant :
     - trajet : Résumé (distance, temps total avec charge, temps de conduite).
-    - bornes_recharge : Liste des arrêts avec coordonnées GPS exactes.
+    - bornes_recharge : Liste des arrêts avec coordonnées INFOS.md exactes.
     - vehicule : Rappel des infos du véhicule utilisé.
 
     Exemple de réponse réussie (200 OK) :
