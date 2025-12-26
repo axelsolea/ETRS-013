@@ -1,19 +1,15 @@
-from flask import Flask, render_template, request
+#Imports
+from flask import Flask, render_template, request, jsonify
 import folium
 import zeep
 import json
 import math
-import os
+
 app = Flask(__name__)
 
-# APIZeep définition du Sce Web
-# Si la variable existe (sur Azure), on l'utilise, sinon on prend localhost (sur votre PC)
+# APIZeep définition du Service Web
 
-#wsdl_url = os.environ.get('SOAP_URL', 'http://127.0.0.1:8000')
-#wsdl = f'{wsdl_url}/?wsdl'
-
-#wsdl = 'http://127.0.0.1:8000/?wsdl'
-
+#wsdl = 'http://127.0.0.1:8000/?wsdl' ### Pour le developpement en local
 wsdl = 'https://soap-engine-bth0b0d3hpfqd7e7.francecentral-01.azurewebsites.net/?wsdl'
 client = zeep.Client(wsdl=wsdl)
 
@@ -39,8 +35,11 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 @app.route("/vehicules", methods=['GET', 'POST'])
 def vehicules():
+    """
+    Debug route to get the list of available vehicules
+    """
     result = client.service.get_vehicule_list()
-    print(result)
+    return result
 
 
 @app.route("/compute", methods=['GET', 'POST'])  # Render de l'index avec calcul
@@ -324,6 +323,211 @@ def componentsCompute():
     except Exception as e:  # Affichage de l'erreur en cas d'erreur
         return render_template("results.html", erreur=str(e))
 
+
+
+
+"""
+    Point de terminaison API pour le calcul d'itinéraire électrique (M2M).
+
+    Cette route permet à une application tierce (mobile, web, etc.) de consommer
+    la logique de calcul de trajet et de placement des bornes sans utiliser 
+    l'interface graphique HTML.
+
+    Route : /api/calculate_trip
+    Méthode : POST
+    Type de contenu : application/json
+
+    Paramètres d'entrée (JSON ou Formulaire) :
+    ------------------------------------------
+    - start (str) : Adresse de départ.
+    - end (str) : Adresse de destination.
+    - vehiculeId (str) : L'identifiant unique du véhicule (issu de l'API Chargetrip).
+
+    Exemple de corps de requête :
+    {
+        "start": "Cognin",
+        "end": "Brest",
+        "vehiculeId": "5f043b26bc262f1627fc0233" (Tesla modèle S)
+    }
+
+    Réponse (JSON) :
+    ----------------
+    Retourne un objet JSON structuré contenant :
+    - trajet : Résumé (distance, temps total avec charge, temps de conduite).
+    - bornes_recharge : Liste des arrêts avec coordonnées GPS exactes.
+    - vehicule : Rappel des infos du véhicule utilisé.
+
+    Exemple de réponse réussie (200 OK) :
+    {
+        "trajet": {
+            "depart": {"adresse": "Cognin", "lat": 45.5, "lng": 5.8},
+            "arrivee": {"adresse": "Brest", "lat": 48.3, "lng": -4.4},
+            "distance_km": 1075.4,
+            "temps_total_str": "12h 30min",
+            "nb_arrets": 3
+        },
+        "bornes_recharge": [
+            {
+                "nom": "Ionity Aire de...",
+                "latitude": 46.12,
+                "longitude": 4.89,
+                "puissance": 350
+            }
+        ],
+        "vehicule": {
+            "id": "5f04...",
+            "autonomie_theorique": 350
+        }
+    }
+
+    Codes d'erreur :
+    ----------------
+    - 400 : Paramètres manquants (start, end ou vehiculeId).
+    - 404 : Véhicule non trouvé (ID incorrect ou hors liste).
+    - 500 : Erreur interne (Problème de connexion aux services SOAP/Externes).
+    """
+
+@app.route("/api/calculate_trip", methods=['POST'])
+def api_calculate_trip():
+    try:
+        # --- 1. Récupération des paramètres ---
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            data = request.form
+
+        start = data.get('start')
+        end = data.get('end')
+        raw_vehiculeId = data.get('vehiculeId') or data.get('vehicule')
+
+        if not start or not end or not raw_vehiculeId:
+            return jsonify({"error": "Parametres manquants (start, end, vehiculeId)"}), 400
+
+        target_id = str(raw_vehiculeId).strip()
+
+        # --- 2. Récupération Info Véhicule ---
+        vehicule_json_str = client.service.get_vehicule_list()
+        vehicule_data = json.loads(vehicule_json_str)
+        vehicle_list = vehicule_data.get("data", {}).get("vehicleList", [])
+
+        autonomieTot = 0
+        autonomieTotkWh = 0
+        found = False
+
+        for v in vehicle_list:
+            if str(v['id']).strip() == target_id:
+                autonomieTot = v["range"]["chargetrip_range"]["worst"]
+                autonomieTotkWh = v["battery"]["usable_kwh"]
+                found = True
+                break
+
+        if not found:
+            return jsonify({"error": "Véhicule non trouvé"}), 404
+
+        # --- 3. Géocodage et Route Initiale ---
+        startRes = client.service.forward(start)
+        endRes = client.service.forward(end)
+
+        # Appel SOAP pour le tracé initial
+        GeoJSONStr = client.service.compute_travel(startRes[2], startRes[1], endRes[2], endRes[1])
+        GeoJSON = json.loads(GeoJSONStr)
+
+        # Extraction des points du chemin
+        listePtsChemin = []
+        # Note: ORS renvoie [Lon, Lat], on stocke [Lat, Lon]
+        for lon, lat in GeoJSON["features"][0]["geometry"]["coordinates"]:
+            listePtsChemin.append([lat, lon])
+
+        # --- 4. Algorithme de recherche de bornes ---
+        autonomieRestante = autonomieTot
+        bornes_trouvees = []  # Liste pour stocker les infos des bornes
+        totalChargeSeconds = 0
+
+        for i in range(len(listePtsChemin) - 1):
+            p1_lat, p1_lon = listePtsChemin[i]
+            p2_lat, p2_lon = listePtsChemin[i + 1]
+
+            dist_segment = haversine_distance(p1_lat, p1_lon, p2_lat, p2_lon)
+
+            # Si batterie faible (< 10km)
+            if autonomieRestante - dist_segment < 10:
+                try:
+                    # Recherche SOAP d'une borne à 10km
+                    res_json = client.service.near_charging(p1_lon, p1_lat, "10")
+                    data_bornes = json.loads(res_json)
+
+                    next_station = None
+                    if "results" in data_bornes and len(data_bornes["results"]) > 0:
+                        next_station = data_bornes["results"][0]
+
+                    # Si échec, tentative à 30km
+                    if not next_station:
+                        res_json = client.service.near_charging(p1_lon, p1_lat, "30km")
+                        data_bornes = json.loads(res_json)
+                        if "results" in data_bornes and len(data_bornes["results"]) > 0:
+                            next_station = data_bornes["results"][0]
+
+                    if next_station:
+                        # On stocke la borne trouvée
+                        borne_info = {
+                            "nom": next_station.get("n_station", "Borne inconnue"),
+                            "latitude": next_station["ylatitude"],
+                            "longitude": next_station["xlongitude"],
+                            "puissance": next_station["puiss_max"]
+                        }
+                        bornes_trouvees.append(borne_info)
+
+                        # Calcul temps de charge
+                        pourcentRestant = max(autonomieRestante, 0) / autonomieTot
+                        pourcentNecessaire = 0.80 - pourcentRestant
+
+                        if pourcentNecessaire > 0:
+                            temps_charge_h = (autonomieTotkWh * pourcentNecessaire) / (next_station["puiss_max"] * 0.9)
+                            totalChargeSeconds += temps_charge_h * 3600
+                            autonomieRestante += (autonomieTot * pourcentNecessaire)
+
+                except Exception as e:
+                    print(f"[API ERROR] Erreur recherche borne: {e}")
+                    # On continue pour ne pas planter l'API, mais sans ajouter de borne
+
+            autonomieRestante -= dist_segment
+
+        # --- 5. Finalisation des totaux ---
+        segments = GeoJSON["features"][0]["properties"]["segments"]
+        totalDrivingSeconds = sum(seg["duration"] for seg in segments)
+        totalDistanceMeters = sum(seg["distance"] for seg in segments)
+
+        totalSeconds = totalDrivingSeconds + totalChargeSeconds
+        dist_km = totalDistanceMeters / 1000
+
+        def format_time(seconds):
+            h = int(seconds // 3600)
+            m = int((seconds % 3600) // 60)
+            return f"{h}h {m}min"
+
+        # --- 6. Construction de la réponse JSON ---
+        response = {
+            "trajet": {
+                "depart": {"adresse": startRes[0], "lat": startRes[1], "lng": startRes[2]},
+                "arrivee": {"adresse": endRes[0], "lat": endRes[1], "lng": endRes[2]},
+                "distance_km": round(dist_km, 2),
+                "temps_total_str": format_time(totalSeconds),
+                "temps_conduite_str": format_time(totalDrivingSeconds),
+                "temps_recharge_str": format_time(totalChargeSeconds),
+                "nb_arrets": len(bornes_trouvees)
+            },
+            "bornes_recharge": bornes_trouvees,
+            "vehicule": {
+                "id": target_id,
+                "modele": f"{v['naming']['make']} {v['naming']['model']}",
+                "autonomie_theorique": autonomieTot
+            }
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        print(f"[API CRITICAL ERROR] {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
