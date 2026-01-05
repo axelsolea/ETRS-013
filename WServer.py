@@ -4,7 +4,12 @@ import folium
 import zeep
 import json
 import math
+import logging
 
+# Configuration basique du logging
+logging.basicConfig(level=logging.ERROR)
+
+#Définition de l'app
 app = Flask(__name__)
 
 # APIZeep définition du Service Web
@@ -158,6 +163,8 @@ def componentsCompute():
         )
         GeoJSON = json.loads(GeoJSONStr)
         print("[DEBUG] Primary path computed!")
+        if not GeoJSON["features"]:
+            print("[ERROR] Features not found - no travel computed - GeoJSON : " + str(GeoJSON))
 
         # ---                     Calcul primaire du chemin                          ---#
         listePtsChemin = []
@@ -207,10 +214,16 @@ def componentsCompute():
                     if not next_station:
                         raise Exception("Pas de bornes trouvées")
 
+
                 except Exception as e:
-                    print(f"[DEBUG] Erreur recherche borne: {e}")
-                    return render_template("results.html",
-                                           erreur="Pas de bornes en portée d'autonomie sur le trajet (Zone blanche)")
+                    # On enregistre l'erreur complète dans les logs du serveur
+                    logging.error(f"Erreur lors du calcul du trajet : {e}", exc_info=True)
+
+                    # On renvoie un message générique à l'utilisateur
+                    return render_template(
+                        "results.html",
+                        erreur="Une erreur est survenue, impossible de calculer le trajet primaire."
+                    )
 
                 # Ajout de la borne à la liste des étapes
                 coordonneesBornes.append((next_station["xlongitude"], next_station["ylatitude"]))
@@ -327,8 +340,16 @@ def componentsCompute():
             chargeTime=charge_time_formatted
         )
 
-    except Exception as e:  # Affichage de l'erreur en cas d'erreur
-        return render_template("results.html", erreur=str(e))
+
+    except Exception as e:
+        # On enregistre l'erreur complète dans les logs du serveur
+        logging.error(f"Erreur lors du calcul du trajet : {e}", exc_info=True)
+
+        # On renvoie un message générique à l'utilisateur
+        return render_template(
+            "results.html",
+            erreur="Une erreur est survenue, impossible de calculer le trajet."
+        )
 
 
 
@@ -542,8 +563,9 @@ def api_calculate_trip():
         return jsonify(response)
 
     except Exception as e:
-        print(f"[API CRITICAL ERROR] {e}")
-        return jsonify({"error": str(e)}), 500
+        logging.error(f"Critique API Error : {e}", exc_info=True)
+        # On ne donne aucun indice technique dans le JSON
+        return jsonify({"error": "Internal Server Error"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
