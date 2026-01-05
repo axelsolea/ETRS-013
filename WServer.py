@@ -152,8 +152,11 @@ def componentsCompute():
 
         # ---                     Forward Geo Coding                          ---#
         # Forward result format : ["formatted address","latitude","longitude"]
+
         forwardStartResult = client.service.forward(start)
+        print("[DEBUG] forwardGeoCode: " + str(forwardStartResult))
         forwardEndResult = client.service.forward(end)
+        print("[DEBUG] forwardGeoCode: " + str(forwardEndResult))
 
         GeoJSONStr = client.service.compute_travel(
             forwardStartResult[2],
@@ -162,8 +165,9 @@ def componentsCompute():
             forwardEndResult[1]
         )
         GeoJSON = json.loads(GeoJSONStr)
-        print("[DEBUG] Primary path computed!")
-        if not GeoJSON["features"]:
+        try:
+            print("GeoJSON received : " + str(GeoJSON["features"]))
+        except:
             print("[ERROR] Features not found - no travel computed - GeoJSON : " + str(GeoJSON))
 
         # ---                     Calcul primaire du chemin                          ---#
