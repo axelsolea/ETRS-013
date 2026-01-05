@@ -16,7 +16,7 @@ client = zeep.Client(wsdl=wsdl)
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
-    Calcule la distance géodésique entre deux points INFOS.md.
+    Calcule la distance géodésique entre deux points.
 
     Args:
         lat1 (float): Latitude du point 1.
