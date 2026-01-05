@@ -7,7 +7,10 @@ from spyne.protocol.soap import Soap11
 from spyne.server.wsgi import WsgiApplication
 import math
 import requests
-load_dotenv()
+
+# Si on travaille en local, on load les clés API du .env
+if os.path.exists(".env"):
+    load_dotenv()
 
 OpenRteSce_API_KEY = os.getenv("OPEN_ROUTE_SERVICE_KEY")
 OpenCage_API_KEY = os.getenv("OPEN_CAGE_API_KEY")
