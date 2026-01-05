@@ -14,8 +14,8 @@ app = Flask(__name__)
 
 # APIZeep définition du Service Web
 
-#wsdl = 'http://127.0.0.1:8000/?wsdl' ### Pour le developpement en local
-wsdl = 'https://soap-engine-bth0b0d3hpfqd7e7.francecentral-01.azurewebsites.net/?wsdl'
+wsdl = 'http://127.0.0.1:8000/?wsdl' ### Pour le developpement en local
+#wsdl = 'https://soap-engine-bth0b0d3hpfqd7e7.francecentral-01.azurewebsites.net/?wsdl'
 client = zeep.Client(wsdl=wsdl)
 
 
@@ -46,6 +46,11 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
     return R * c
 
+# Variable globale pour suivre l'état
+etat_calcul = {"message": "Prêt", "pourcentage": 0}
+@app.route("/flux_chargement")
+def flux_chargement():
+    return jsonify(etat_calcul)
 
 @app.route("/vehicules", methods=['GET', 'POST'])
 def vehicules():
@@ -110,7 +115,9 @@ def componentsCompute():
         Returns:
             Template HTML: 'results.html' avec la carte, le tracé et les statistiques.
         """
+    global etat_calcul
     try:
+        etat_calcul = {"message": "Récupération des informations...", "pourcentage": 5}
         # ---                     Key variables                          ---#
         m = folium.Map(
             width=800,
@@ -152,12 +159,13 @@ def componentsCompute():
 
         # ---                     Forward Geo Coding                          ---#
         # Forward result format : ["formatted address","latitude","longitude"]
-
+        etat_calcul = {"message": "Localisation du départ et de l'arrivée...", "pourcentage": 15}
         forwardStartResult = client.service.forward(start)
         print("[DEBUG] forwardGeoCode: " + str(forwardStartResult))
         forwardEndResult = client.service.forward(end)
         print("[DEBUG] forwardGeoCode: " + str(forwardEndResult))
 
+        etat_calcul = {"message": "Calcul de l'itinéraire primaire...", "pourcentage": 30}
         GeoJSONStr = client.service.compute_travel(
             forwardStartResult[2],
             forwardStartResult[1],
@@ -180,6 +188,7 @@ def componentsCompute():
         # ---        Recalcul de l'itinéraire pour prendre en compte les bornes      ---#
         distance_parcourue = 0
         coordonneesBornes.append([float(forwardStartResult[2]), float(forwardStartResult[1])])
+        etat_calcul = {"message": "Recherche des bornes de recharge...", "pourcentage": 65}
         print("[DEBUG] Begin computing logic based on geometry points...")
         for i in range(len(listePtsChemin) - 1):
             # Point actuel (A) et point suivant (B)
@@ -255,6 +264,7 @@ def componentsCompute():
 
         # ---                     Calcul secondaire du chemin                          ---#
         print("[DEBUG] Recomputing path...")
+        etat_calcul = {"message": "Finalisation du tracé complet...", "pourcentage": 90}
         coordonneesBornes.append([float(forwardEndResult[2]), float(forwardEndResult[1])])
         coordonneesStr = json.dumps(coordonneesBornes)
         GeoJSONStr = client.service.compute_travel_profiled(coordonneesStr)
