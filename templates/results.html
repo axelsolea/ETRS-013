@@ -212,30 +212,26 @@
 
                 <div class="stat-row">
                     <div class="stat-label"><i class="far fa-clock"></i> Temps Total</div>
-                    <div class="stat-value text-green">20h 27min</div>
+                    <div class="stat-value text-green">{{ travelTime }}</div>
                 </div>
 
                 <div class="stat-row">
                     <div class="stat-label"><i class="fas fa-road"></i> Distance</div>
-                    <div class="stat-value">1426.2 km</div>
+                    <div class="stat-value">{{ distance }}km</div>
                 </div>
 
                 <div class="stat-row" style="border-bottom: none;">
                     <div class="stat-label"><i class="fas fa-car-side"></i> Conduite</div>
-                    <div class="stat-value">14h 11min</div>
+                    <div class="stat-value">{{ drivingTime }}</div>
                 </div>
 
                 <div class="charge-box">
                     <div class="charge-icon"><i class="fas fa-charging-station"></i></div>
                     <div class="charge-text">
                         <h4>Temps de charge</h4>
-                        <span>6h 16min</span>
+                        <span>{{ chargeTime }}</span>
                     </div>
                 </div>
-
-                <button class="btn-back">
-                    <i class="fas fa-arrow-left"></i> Nouvelle recherche
-                </button>
             </div>
 
             <div class="map-panel">

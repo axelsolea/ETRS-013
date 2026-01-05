@@ -174,7 +174,7 @@ def componentsCompute():
         for lon, lat in GeoJSON["features"][0]["geometry"]["coordinates"]:
             listePtsChemin.append([lat, lon])
 
-        print("[DEBUG] Computed listePtsChemin! Size: " + str(len(listePtsChemin)))
+        print("[DEBUG] Computed listePtsChemin! Size: ")
 
         # ---        Recalcul de l'itinéraire pour prendre en compte les bornes      ---#
         distance_parcourue = 0
@@ -334,6 +334,9 @@ def componentsCompute():
         body_html = m.get_root().html.render()
         script = m.get_root().script.render()
         print("[DEBUG] Map rendered")
+        print("[DEBUG] travelTime : " + str(travel_time_formatted))
+        print("[DEBUG] drivingTime : " + str(driving_time_formatted))
+        print("[DEBUG] chargeTime : " + str(charge_time_formatted))
 
         # --- RETOUR DU TEMPLATE AVEC LES VARIABLES ---
         return render_template(
