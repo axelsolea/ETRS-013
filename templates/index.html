@@ -1,113 +1,144 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Calculateur d'Itinéraire Électrique</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    {{ header|safe }}
-
-    <style>
-        /* Définit la hauteur de la carte à l'intérieur du conteneur */
-        .map-container {
-            height: 600px;
-            margin-top: 20px;
-            border-radius: 8px; /* Bords arrondis */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Ombre légère */
-        }
-
-        /* Assure que la div Folium prend toute la hauteur du conteneur */
-        #map {
-            height: 100%;
-            border-radius: 8px;
-        }
-    </style>
-</head>
 <body>
 
-<nav class="navbar navbar-dark bg-dark">
-    <div class="container-fluid">
-        <span class="navbar-brand mb-0 h1">⚡ Itinéraire Véhicule Électrique</span>
+<nav class="navbar navbar-expand-lg navbar-light fixed-top">
+    <div class="container">
+        <span class="navbar-brand">
+            <i class="fa-solid fa-bolt-lightning text-success me-2"></i> ElectroTrip
+        </span>
     </div>
 </nav>
 
-<div id="main-container" class="container mt-4">
-    <div class="row">
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">📍 Planifier votre Voyage</h5>
-                </div>
-                <form class="card-body" action="computeTravel" method="POST">
-
-                    <div class="mb-3">
-                        <label for="start" class="form-label">Départ (Adresse)</label>
-                        <input type="text" class="form-control" id="start" name="start"
-                               placeholder="Ex: Tour Eiffel, Paris">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="end" class="form-label">Destination (Adresse)</label>
-                        <input type="text" class="form-control" id="end" name="end" placeholder="Ex: Lyon, France">
-                    </div>
-                    <div class="mb-3">
-                        <label for="vehicule_select" class="form-label">Véhicule</label>
-
-                        <select class="form-select" id="vehicule_select" name="vehicule">
-                            <option value="" selected>Choisir un véhicule...</option>
-
-                            {% if vehicules %}
-                            {% for vehicule in vehicules %}
-                            <option value="{{ vehicule.id }}">
-                                {{ vehicule.name }}
-                            </option>
-                            {% endfor %}
-                            {% else %}
-                            <option value="" disabled>Impossible de charger la liste des véhicules.</option>
-                            {% endif %}
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100 mt-2">
-                        🚀 Calculer l'itinéraire
-                    </button>
-
-                    {% if resultat %}
-                    <div class="alert alert-success mt-4">
-                        Résultat : {{ resultat }}
-                    </div>
-                    {% endif %}
-                    {% if erreur %}
-                    <div class="alert alert-danger mt-4">
-                        Erreur : {{ erreur }}
-                    </div>
-                    {% endif %}
-                </form>
-
-                <div class="card-footer">
-                    <div id="route-info" class="fw-bold text-center text-primary">
-                        Entrez un départ et une destination.
-                    </div>
-                </div>
-            </div>
+<div id="main-container" class="container">
+    <div class="card">
+        <div class="card-header text-center">
+            <h4 class="mb-1 fw-bold text-dark">Planifiez votre voyage</h4>
+            <p class="text-muted small mb-0">Optimisé pour votre véhicule électrique</p>
         </div>
 
-        <div class="col-lg-8">
-            <div class="map-container">
-                {{ body_html|safe }}
+        <form class="card-body p-4" action="computeTravel" method="POST">
+
+            <div class="mb-3">
+                <label for="start" class="form-label"><i class="fa-solid fa-location-dot me-2 text-primary"></i>Départ</label>
+                <input type="text" class="form-control" id="start" name="start" placeholder="Ex: 2 Rue de la Paix Paris" required>
             </div>
-        </div>
+
+            <div class="mb-3">
+                <label for="end" class="form-label"><i class="fa-solid fa-flag-checkered me-2 text-danger"></i>Destination</label>
+                <input type="text" class="form-control" id="end" name="end" placeholder="Ex: 221 Avenue de Lyon Chambéry" required>
+            </div>
+
+            <div class="mb-4">
+                <label for="vehicule_select" class="form-label"><i class="fa-solid fa-car me-2 text-success"></i>Véhicule</label>
+                <select class="form-select" id="vehicule_select" name="vehicule" required>
+                    <option value="" selected>Sélectionnez un modèle...</option>
+                    {% if vehicules %}
+                        {% for vehicule in vehicules %}
+                            <option value="{{ vehicule.id }}">{{ vehicule.name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">
+                Calculer l'itinéraire <i class="fa-solid fa-arrow-right ms-2"></i>
+            </button>
+
+            {% if erreur %}
+            <div class="alert alert-danger mt-3 mb-0">
+                <i class="fa-solid fa-circle-exclamation me-2"></i>{{ erreur }}
+            </div>
+            {% endif %}
+        </form>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-    {{ folium_script|safe }}
-</script>
-
 <script src="static/app.js"></script>
 
 </body>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Planificateur - Trajet VE</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: #2c3e50 !important;
+        }
+
+        /* Centrage vertical et horizontal du contenu principal */
+        #main-container {
+            flex: 1; /* Prend l'espace restant */
+            display: flex;
+            align-items: center; /* Centre verticalement */
+            justify-content: center; /* Centre horizontalement */
+            padding-bottom: 50px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: white;
+            width: 100%;
+            max-width: 500px; /* On limite la largeur pour l'élégance */
+        }
+
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 25px 25px 10px 25px;
+            border-radius: 20px 20px 0 0 !important;
+        }
+
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: white;
+            border-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
 </html>

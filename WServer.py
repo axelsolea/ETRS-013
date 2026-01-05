@@ -69,23 +69,15 @@ def vehicules():
 @app.route("/")
 def components():
     """
-    Génère la page d'accueil avec la carte et le sélecteur de véhicule.
+    Génère la page d'accueil (Formulaire uniquement).
 
     Args:
         None.
 
     Returns:
-        Template HTML: 'index.html' avec la carte Folium et la liste des options véhicules.
+        Template HTML: 'index.html'
     """
-    m = folium.Map(
-        width=800,
-        height=600,
-    )
 
-    m.get_root().render()
-    header = m.get_root().header.render()
-    body_html = m.get_root().html.render()
-    script = m.get_root().script.render()
     vehicule_json_str = client.service.get_vehicule_list()
     vehicule_data = json.loads(vehicule_json_str)
 
@@ -100,8 +92,7 @@ def components():
             'id': v.get('id', ''),
             'name': name
         })
-    return render_template("index.html", header=header, body_html=body_html, folium_script=script,
-                           vehicules=vehicule_options)
+    return render_template("index.html", vehicules=vehicule_options)
 
 
 @app.route("/computeTravel", methods=['GET', 'POST'])
@@ -296,6 +287,7 @@ def componentsCompute():
             return f"{h}h {m}min"
 
         travel_time_formatted = format_time(totalSeconds)
+        driving_time_formatted = format_time(totalDrivingSeconds)
         charge_time_formatted = format_time(totalChargeSeconds)
 
         # ---                     Tracé du chemin                          ---#
@@ -351,7 +343,8 @@ def componentsCompute():
             folium_script=script,
             distance=dist_km,
             travelTime=travel_time_formatted,
-            chargeTime=charge_time_formatted
+            chargeTime=charge_time_formatted,
+            drivingTime=driving_time_formatted
         )
 
 
