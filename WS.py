@@ -1,13 +1,16 @@
 import json
+import os
+from dotenv import load_dotenv
 from wsgiref.simple_server import make_server
 from spyne import Application, rpc, ServiceBase, Integer, Iterable, Unicode, Float, String
 from spyne.protocol.soap import Soap11
 from spyne.server.wsgi import WsgiApplication
 import math
 import requests
+load_dotenv()
 
-OpenRteSce_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBhYTQ4MWRiYzJjMzQ5NWRiYzhhZTEyOGM4ZDZhNGM5IiwiaCI6Im11cm11cjY0In0="
-OpenCage_API_KEY = "91f9a68a0eb04dd492e16b64e74faca0"
+OpenRteSce_API_KEY = os.getenv("OPEN_ROUTE_SERVICE_KEY")
+OpenCage_API_KEY = os.getenv("OPEN_CAGE_API_KEY")
 GRAPHQL_QUERY = """
 query vehicleList {
   vehicleList(size: 10, page: 0) {
@@ -200,8 +203,8 @@ class getVehiculeList(ServiceBase):
         requestUrl = "https://api.chargetrip.io/graphql"
         payload = {"query": GRAPHQL_QUERY}
         headers = {
-            'x-client-id': '693c2f3371c4b62cdd1c5054',
-            'x-app-id': '693c2f3371c4b62cdd1c5056',}
+            'x-client-id': os.getenv("CHARGETRIP_CLIENT_ID"),
+            'x-app-id': os.getenv("CHARGETRIP_APP_ID")}
         response = requests.request("POST", requestUrl, headers=headers, data=payload)
         return response.text
 
