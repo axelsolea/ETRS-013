@@ -14,8 +14,8 @@ app = Flask(__name__)
 
 # APIZeep définition du Service Web
 
-wsdl = 'http://127.0.0.1:8000/?wsdl' ### Pour le developpement en local
-#wsdl = 'https://soap-engine-bth0b0d3hpfqd7e7.francecentral-01.azurewebsites.net/?wsdl'
+#wsdl = 'http://127.0.0.1:8000/?wsdl' ### Pour le developpement en local
+wsdl = 'https://soap-engine-bth0b0d3hpfqd7e7.francecentral-01.azurewebsites.net/?wsdl'
 client = zeep.Client(wsdl=wsdl)
 
 
